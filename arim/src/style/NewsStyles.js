@@ -4,7 +4,7 @@ import styled from 'styled-components';
 export const Container = styled.div`
   max-width: 768px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 30px 20px;
   background-color: #f9f9f9;
   min-height: 100vh;
   font-family: 'Noto Sans KR', sans-serif;
