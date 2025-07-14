@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import axios from 'axios';
-import { useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useIsFetching } from '@tanstack/react-query';
 import styled from 'styled-components';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -136,10 +136,31 @@ const MapFind = () => {
     return { lng, lat };
   };
 
-  const { mutate, isLoading } = useMutation({
+  const {
+    data: startCoord,
+    isLoading: isStartLoading,
+    isError: isStartError,
+  } = useQuery({
+    queryKey: ['start-coord', start],
+    queryFn: () => getCoordinates(start),
+    enabled: !!start,
+  });
+
+  const {
+    data: endCoord,
+    isLoading: isEndLoading,
+    isError: isEndError,
+  } = useQuery({
+    queryKey: ['end-coord', end],
+    queryFn: () => getCoordinates(end),
+    enabled: !!end,
+  });
+
+  const { mutate, isPending } = useMutation({
     mutationFn: async () => {
-      const startCoord = await getCoordinates(start);
-      const endCoord = await getCoordinates(end);
+      if (!startCoord || !endCoord) {
+        throw new Error('좌표 정보를 불러오지 못했습니다.');
+      }
 
       const coords = `${startCoord.lng},${startCoord.lat};${endCoord.lng},${endCoord.lat}`;
       const res = await axios.get(
@@ -156,6 +177,7 @@ const MapFind = () => {
       const route = res.data.routes[0];
       setRouteData(route);
 
+      // route를 먼저 선언한 뒤 geojson을 생성합니다.
       const geojson = {
         type: 'Feature',
         geometry: route.geometry,
@@ -177,8 +199,6 @@ const MapFind = () => {
           paint: { 'line-color': '#007bff', 'line-width': 5 },
         });
       }
-
-      map.current.flyTo({ center: [startCoord.lng, startCoord.lat], zoom: 13 });
     },
     onError: (error) => {
       console.error('경로 오류:', error);
@@ -186,12 +206,18 @@ const MapFind = () => {
     },
   });
 
+  const isFetching = useIsFetching();
+
   const handleFindRoute = () => {
     if (!start || !end) {
       alert('출발지와 도착지를 모두 입력하세요.');
       return;
     }
-    mutate(); // 실행
+    if (!startCoord || !endCoord) {
+      alert('좌표 정보를 불러오는 중입니다. 기다려 주세요.');
+      return;
+    }
+    mutate();
   };
 
   return (
@@ -225,7 +251,9 @@ const MapFind = () => {
         </a>
       </Note>
 
-      {isLoading && <Spinner />}
+      {(isPending || isStartLoading || isEndLoading || isFetching > 0) && (
+        <Spinner />
+      )}
 
       <MapContainer ref={mapContainer} />
 
