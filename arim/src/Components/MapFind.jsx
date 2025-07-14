@@ -93,8 +93,6 @@ const RouteDetails = styled.div`
   }
 `;
 
-console.log('TOKEN:', import.meta.env.VITE_MAPBOX_TOKEN);
-
 const MapFind = () => {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
